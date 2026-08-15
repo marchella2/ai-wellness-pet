@@ -21,6 +21,7 @@ The API lets users set up a virtual pet, log daily wellness activities (water in
 
 ## Features
 
+- **User Registration** — register a user with `POST /api/v1/user/register` before setting up a pet.
 - **Pet Onboarding** — create or rename a pet with `POST /api/v1/pet/setup`.
 - **Core Loop** — log daily activities and get updated pet scores + an empathetic AI message.
 - **AI Companion (Milo)** — Gemini (`gemini-1.5-flash`) generates a short, empathetic reply based on the pet's state and the owner's journal. A fallback message is returned when the AI API errors or is rate-limited.
@@ -134,6 +135,7 @@ pet-wellness-backend/
 │   └── daily_log.go               # DailyLog model
 ├── services/                      # Business logic (one struct per endpoint)
 │   ├── health_service.go          # HealthService
+│   ├── user_service.go            # UserService (register)
 │   ├── pet_service.go             # PetService (read, setup, reset, simulate)
 │   ├── activity_service.go        # ActivityService (log + logic engine + AI)
 │   ├── logic_engine.go            # Score calculation & mood determination
@@ -141,10 +143,12 @@ pet-wellness-backend/
 │   └── *_test.go                  # Unit tests
 ├── controllers/                   # HTTP handlers (one struct per endpoint)
 │   ├── health_controller.go       # HealthController
+│   ├── user_controller.go         # UserController
 │   ├── pet_controller.go          # PetController
 │   └── activity_controller.go     # ActivityController
 ├── routes/                        # Route registration (one struct per endpoint)
 │   ├── health_router.go           # GET /health
+│   ├── user_router.go             # /user routes
 │   ├── pet_router.go              # /pet routes
 │   └── activity_router.go         # /activity routes
 └── postman/                       # Postman collection
@@ -156,6 +160,7 @@ pet-wellness-backend/
 | Method | Endpoint | Description |
 | --- | --- | --- |
 | `GET` | `/health` | Server health check |
+| `POST` | `/api/v1/user/register` | Register a new user (idempotent by email) |
 | `GET` | `/api/v1/pet/:user_id` | Get the latest pet of a user |
 | `POST` | `/api/v1/pet/setup` | Create or rename a pet (onboarding) |
 | `POST` | `/api/v1/pet/:user_id/reset` | Reset pet to default state (50/50/Neutral) |
@@ -177,6 +182,60 @@ GET /health
 }
 ```
 
+### Register User
+
+```http
+POST /api/v1/user/register
+Content-Type: application/json
+```
+
+**Request body**
+
+```json
+{
+    "name": "Jane Doe",
+    "email": "jane@example.com"
+}
+```
+
+- `name` and `email` are **mandatory** (missing either → `400`).
+- If the email is not yet registered, a new user is created.
+- If the email is already registered, the endpoint is **idempotent**: it returns the existing user instead of erroring.
+
+**Response — 201 Created** (new user)
+
+```json
+{
+    "status": "success",
+    "message": "User registered successfully",
+    "user": {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "name": "Jane Doe",
+        "email": "jane@example.com",
+        "created_at": "2026-08-16T12:00:00+07:00"
+    }
+}
+```
+
+**Response — 200 OK** (email already registered)
+
+```json
+{
+    "status": "success",
+    "message": "User already registered",
+    "user": {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "name": "Jane Doe",
+        "email": "jane@example.com",
+        "created_at": "2026-08-16T12:00:00+07:00"
+    }
+}
+```
+
+**Error — 400** `{"status": "error", "message": "name is required"}` or `{"status": "error", "message": "email is required"}`
+
+**Error — 500** `{"status": "error", "message": "..."}` on unexpected DB failure.
+
 ### Setup Pet (Onboarding)
 
 ```http
@@ -196,6 +255,7 @@ Content-Type: application/json
 - `pet_name` is **mandatory** (empty → `400 pet_name is required`).
 - If the user has no pet yet, a new pet is created with `health_score: 50`, `energy_score: 50`, `current_state: "Neutral"`.
 - If the pet already exists, only `pet_name` is updated.
+- The `user_id` must already exist — call `POST /api/v1/user/register` first to obtain one.
 
 **Response — 200 OK**
 
@@ -407,9 +467,11 @@ Scores start from the pet's current values and are updated on every activity:
 
 | HTTP Status | Scenario |
 | --- | --- |
-| `400` | Invalid JSON body, missing `user_id`, or missing `pet_name` |
+| `400` | Invalid JSON body, missing `user_id`, missing `pet_name`, or missing `name`/`email` on registration |
 | `404` | Pet not found, or user not registered (FK violation during setup) |
 | `500` | Database/processing failure (logged to the server console) |
+
+> **Note:** `POST /api/v1/user/register` returns `200` (not an error) when the email is already registered — it's treated as idempotent and returns the existing user rather than a `409 Conflict`.
 
 ## Deployment (Render)
 
@@ -438,7 +500,7 @@ Import `postman/AI-Wellness-Pet.postman_collection.json` into Postman. The colle
 
 ## Testing
 
-Unit tests cover the Logic Engine (`logic_engine_test.go`) and the FK-violation detection (`pet_service_test.go`).
+Unit tests cover the Logic Engine (`logic_engine_test.go`), the FK-violation detection (`pet_service_test.go`), and the unique-violation detection for user registration (`user_service_test.go`).
 
 ```bash
 go test ./...

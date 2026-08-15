@@ -29,10 +29,12 @@ func main() {
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
 
+	userService := services.NewUserService(db) // NEW
 	petService := services.NewPetService(db)
 	activityService := services.NewActivityService(db, env, petService)
 
 	routes.NewHealthRouter(app, controllers.NewHealthController(services.NewHealthService())).Register()
+	routes.NewUserRouter(app, controllers.NewUserController(userService)).Register() // NEW
 	routes.NewPetRouter(app, controllers.NewPetController(petService)).Register()
 	routes.NewActivityRouter(app, controllers.NewActivityController(activityService)).Register()
 
