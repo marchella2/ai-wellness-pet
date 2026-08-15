@@ -1,0 +1,45 @@
+# =============================================================
+#  AI Wellness Pet — .gitignore
+#  Grouped by category for easy mapping to the project content.
+# =============================================================
+
+# ---------- 1. Environment & Secrets (MUST IGNORE) ----------
+# Project files: .env -> holds DATABASE_URL & GEMINI_API_KEY.
+# Never commit .env (Supabase + Gemini credentials).
+# On Render, set these via the dashboard environment variables instead.
+.env
+.env.*
+!.env.example
+
+# ---------- 2. Build Artifacts (Go) ----------
+# Output of `go build`, e.g. the pet-wellness-backend binary.
+pet-wellness-backend
+*.exe
+*.test
+*.prof
+bin/
+dist/
+build/
+
+# ---------- 3. Test & Coverage ----------
+coverage.out
+coverage.html
+*.coverprofile
+
+# ---------- 4. Logs ----------
+*.log
+logs/
+
+# ---------- 5. OS Files ----------
+.DS_Store
+Thumbs.db
+._*
+.DocumentRevisions-V100
+.fseventsd
+
+# ---------- 6. IDE / Editor ----------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

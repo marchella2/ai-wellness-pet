@@ -1,0 +1,348 @@
+{
+  "info": {
+    "_postman_id": "b341cc34-b738-421d-8594-21d3027654b2",
+    "name": "AI Wellness Pet API",
+    "description": "Backend REST API untuk aplikasi \"AI Wellness Pet\" (Go + Fiber v2 + GORM/PostgreSQL + Gemini AI).\n\n## Variabel Collection\n- `base_url`: URL dasar server (default: `http://localhost:8080`). Ubah ke URL Render saat deploy, contoh: `https://pet-wellness-backend.onrender.com`.\n- `user_id`: ID user (UUID dari Supabase).\n- `pet_name`: Nama hewan peliharaan.\n\n## Alur Utama (Core Loop)\n1. **Setup Pet**: `POST /api/v1/pet/setup` — inisialisasi nama pet saat onboarding (wajib dilakukan sekali per user).\n2. **Catat Aktivitas**: `POST /api/v1/activity` — menjalankan Logic Engine dan Gemini AI.\n3. **Lihat Pet**: `GET /api/v1/pet/:user_id` — mengambil state terbaru pet.\n4. **Riwayat**: `GET /api/v1/activity/:user_id` — 10 log aktivitas terbaru.\n\n## Utilitas Demo & Testing\n- `POST /api/v1/pet/:user_id/reset` — kembalikan pet ke kondisi default (50/50/Neutral).\n- `POST /api/v1/pet/:user_id/simulate-neglect` — simulasi pet diabaikan (20/20/Sad).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        },
+        "description": "Cek status server. Digunakan untuk memastikan API berjalan (misalnya saat health check di Render)."
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "body": "{\n    \"status\": \"ok\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Pet",
+      "item": [
+        {
+          "name": "Get Pet by User ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/pet/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "pet", "{{user_id}}"]
+            },
+            "description": "Mengambil data pet terbaru milik user (health_score, energy_score, current_state, pet_name).\n\n**Error handling:**\n- HTTP `400` jika `user_id` kosong.\n- HTTP `404` jika pet belum dibuat (belum menjalankan setup)."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/pet/{{user_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "pet", "{{user_id}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [],
+              "body": "{\n    \"status\": \"success\",\n    \"pet\": {\n        \"id\": \"9dc1cff1-faca-4e0b-bde9-b3b63ccfa4c8\",\n        \"user_id\": \"aaaa1111-2222-3333-4444-555555555555\",\n        \"pet_name\": \"Momo\",\n        \"health_score\": 50,\n        \"energy_score\": 50,\n        \"current_state\": \"Neutral\",\n        \"created_at\": \"2026-08-16T00:45:37.305246+07:00\",\n        \"updated_at\": \"2026-08-16T00:45:37.305246+07:00\"\n    }\n}"
+            },
+            {
+              "name": "Pet Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/pet/{{user_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "pet", "{{user_id}}"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [],
+              "body": "{\n    \"status\": \"error\",\n    \"message\": \"pet not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Setup Pet (Onboarding)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_id\": \"{{user_id}}\",\n    \"pet_name\": \"{{pet_name}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/pet/setup",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "pet", "setup"]
+            },
+            "description": "Inisialisasi nama pet saat onboarding. Wajib dijalankan sekali sebelum user bisa mencatat aktivitas.\n\n**Logic:**\n- Jika pet belum ada → buat baru dengan `pet_name` dari request (skor 50/50, state `Neutral`).\n- Jika pet sudah ada → hanya update kolom `pet_name`.\n\n**Validasi:**\n- `pet_name` mandatory (kosong → HTTP `400`).\n- `user_id` mandatory (kosong → HTTP `400`)."
+          },
+          "response": [
+            {
+              "name": "Success (New Pet)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_id\": \"{{user_id}}\",\n    \"pet_name\": \"Momo\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/pet/setup",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "pet", "setup"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [],
+              "body": "{\n    \"status\": \"success\",\n    \"message\": \"Pet initialized successfully\",\n    \"pet\": {\n        \"id\": \"9dc1cff1-faca-4e0b-bde9-b3b63ccfa4c8\",\n        \"user_id\": \"aaaa1111-2222-3333-4444-555555555555\",\n        \"pet_name\": \"Momo\",\n        \"health_score\": 50,\n        \"energy_score\": 50,\n        \"current_state\": \"Neutral\",\n        \"created_at\": \"2026-08-16T00:45:37.305246+07:00\",\n        \"updated_at\": \"2026-08-16T00:45:37.305246+07:00\"\n    }\n}"
+            },
+            {
+              "name": "Missing pet_name",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_id\": \"{{user_id}}\",\n    \"pet_name\": \"\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/pet/setup",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "pet", "setup"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [],
+              "body": "{\n    \"status\": \"error\",\n    \"message\": \"pet_name is required\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reset Pet State",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/pet/{{user_id}}/reset",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "pet", "{{user_id}}", "reset"]
+            },
+            "description": "Mengembalikan pet ke kondisi default: `health_score: 50`, `energy_score: 50`, `current_state: \"Neutral\"`.\n\n**Catatan:** Riwayat `daily_logs` **tidak** dihapus.\n\nBerguna untuk demo: reset → simulate-neglect → catat aktivitas (menunjukkan pemulihan skor)."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/pet/{{user_id}}/reset",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "pet", "{{user_id}}", "reset"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [],
+              "body": "{\n    \"status\": \"success\",\n    \"message\": \"Pet state reset to default\",\n    \"pet\": {\n        \"id\": \"9dc1cff1-faca-4e0b-bde9-b3b63ccfa4c8\",\n        \"user_id\": \"aaaa1111-2222-3333-4444-555555555555\",\n        \"pet_name\": \"Momo\",\n        \"health_score\": 50,\n        \"energy_score\": 50,\n        \"current_state\": \"Neutral\",\n        \"created_at\": \"2026-08-16T00:45:37.305246+07:00\",\n        \"updated_at\": \"2026-08-16T00:45:37.305246+07:00\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Simulate Neglect",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/pet/{{user_id}}/simulate-neglect",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "pet", "{{user_id}}", "simulate-neglect"]
+            },
+            "description": "Simulasi fast-forward: pet dianggap diabaikan → `health_score: 20`, `energy_score: 20`, `current_state: \"Sad\"`.\n\nUntuk demo di depan juri (menunjukkan kondisi pet saat diabaikan tanpa menunggu skor turun alami)."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/pet/{{user_id}}/simulate-neglect",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "pet", "{{user_id}}", "simulate-neglect"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [],
+              "body": "{\n    \"status\": \"success\",\n    \"message\": \"Pet is now neglected/sad\",\n    \"pet\": {\n        \"id\": \"9dc1cff1-faca-4e0b-bde9-b3b63ccfa4c8\",\n        \"user_id\": \"aaaa1111-2222-3333-4444-555555555555\",\n        \"pet_name\": \"Momo\",\n        \"health_score\": 20,\n        \"energy_score\": 20,\n        \"current_state\": \"Sad\",\n        \"created_at\": \"2026-08-16T00:45:37.305246+07:00\",\n        \"updated_at\": \"2026-08-16T00:45:37.305246+07:00\"\n    }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Activity",
+      "item": [
+        {
+          "name": "Create Activity (Core Loop)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_id\": \"{{user_id}}\",\n    \"water_glasses\": 4,\n    \"sleep_hours\": 7.5,\n    \"journal_text\": \"Hari ini aku sangat senang bisa jalan pagi bersama Momo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activity",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activity"]
+            },
+            "description": "Endpoint inti. Menerima aktivitas harian user, lalu:\n1. Simpan record ke tabel `daily_logs`.\n2. Jalankan **Logic Engine** untuk menghitung skor baru:\n   - `water_glasses >= 4` → `health_score + 15`\n   - `sleep_hours >= 7.0` → `energy_score + 25`\n   - `journal_text` tidak kosong → `health_score + 10`, `energy_score + 10`\n   - Skor di-clamp 0–100.\n3. Tentukan state: `avg >= 75` → `Happy`, `energy < 35` → `Tired`, `health < 40` → `Sad`, selainnya → `Neutral`.\n4. Update tabel `pets`.\n5. Panggil Gemini AI (model `gemini-1.5-flash`, persona Milo) untuk respons empati terhadap state & jurnal. Fallback text disediakan jika API error/rate-limited.\n\n**Prasyarat:** Pet harus sudah di-setup (`POST /api/v1/pet/setup`). Jika belum → HTTP `404`."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_id\": \"{{user_id}}\",\n    \"water_glasses\": 4,\n    \"sleep_hours\": 7.5,\n    \"journal_text\": \"Hari ini senang\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/activity",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "activity"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [],
+              "body": "{\n    \"status\": \"success\",\n    \"pet\": {\n        \"id\": \"9dc1cff1-faca-4e0b-bde9-b3b63ccfa4c8\",\n        \"user_id\": \"aaaa1111-2222-3333-4444-555555555555\",\n        \"pet_name\": \"Momo\",\n        \"health_score\": 75,\n        \"energy_score\": 85,\n        \"current_state\": \"Happy\",\n        \"created_at\": \"2026-08-16T00:45:37.305246+07:00\",\n        \"updated_at\": \"2026-08-16T00:45:37.317571+07:00\"\n    },\n    \"ai_message\": \"Milo senang kamu sudah mencatat aktivitas hari ini! Jangan lupa tetap minum air yang cukup dan tidur teratur ya.\"\n}"
+            },
+            {
+              "name": "Pet Not Setup Yet",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_id\": \"{{user_id}}\",\n    \"water_glasses\": 0,\n    \"sleep_hours\": 0,\n    \"journal_text\": \"\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/activity",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "activity"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [],
+              "body": "{\n    \"status\": \"error\",\n    \"message\": \"pet not found, please set up your pet first\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Activity History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activity/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activity", "{{user_id}}"]
+            },
+            "description": "Mengambil 10 riwayat log aktivitas terbaru user dari tabel `daily_logs`, diurutkan berdasarkan `created_at DESC`.\n\nBerguna untuk dashboard frontend."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/activity/{{user_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "activity", "{{user_id}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [],
+              "body": "{\n    \"status\": \"success\",\n    \"data\": [\n        {\n            \"id\": \"46197685-709a-4328-8112-d760c1d8793d\",\n            \"user_id\": \"aaaa1111-2222-3333-4444-555555555555\",\n            \"water_glasses\": 0,\n            \"sleep_hours\": 4.0,\n            \"journal_text\": \"\",\n            \"created_at\": \"2026-08-16T00:45:37.317581+07:00\"\n        },\n        {\n            \"id\": \"4883a86c-4386-42e4-a13c-5209e46959ce\",\n            \"user_id\": \"aaaa1111-2222-3333-4444-555555555555\",\n            \"water_glasses\": 4,\n            \"sleep_hours\": 7.5,\n            \"journal_text\": \"Hari ini senang\",\n            \"created_at\": \"2026-08-16T00:45:37.305246+07:00\"\n        }\n    ]\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "1f4dba8f-07c9-4aa3-9738-5b1c9ec18573",
+      "type": "string"
+    },
+    {
+      "key": "pet_name",
+      "value": "Momo",
+      "type": "string"
+    }
+  ]
+}
