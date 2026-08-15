@@ -1,51 +1,51 @@
 # AI Wellness Pet API
 
-Backend REST API for the **"AI Wellness Pet"** hackathon application. Built with **Go**, **Fiber v2**, **GORM** (PostgreSQL / Supabase), and **Google Gemini AI**.
+Backend REST API untuk aplikasi **"AI Wellness Pet"** (hackathon). Dibangun dengan **Go**, **Fiber v2**, **GORM** (PostgreSQL / Supabase), dan **Google Gemini AI**.
 
-The API lets users set up a virtual pet, log daily wellness activities (water intake, sleep, journaling), and receive an empathetic AI response from their pet persona. A built-in **Logic Engine** converts daily activity into health and energy scores that determine the pet's current state (Happy, Neutral, Tired, Sad).
+API ini memungkinkan pengguna menyiapkan hewan peliharaan virtual, mencatat aktivitas harian (konsumsi air, tidur, jurnal), lalu mendapatkan respons AI yang penuh empati dari persona peliharaannya. **Logic Engine** bawaan mengubah aktivitas harian menjadi skor kesehatan dan energi yang menentukan kondisi peliharaan saat ini (Happy, Neutral, Tired, Sad).
 
-> 💡 **Tip:** An Indonesian version of this document is available at [`README.id.md`](./README.id.md).
+> 💡 **Catatan:** Versi bahasa Inggris tersedia di [`README.md`](./README.md).
 
-## Table of Contents
+## Daftar Isi
 
-- [Features](#features)
+- [Fitur](#fitur)
 - [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
-- [API Endpoints](#api-endpoints)
-- [Logic Engine Rules](#logic-engine-rules)
-- [Error Handling](#error-handling)
+- [Memulai](#memulai)
+- [Struktur Project](#struktur-project)
+- [Daftar Endpoint API](#daftar-endpoint-api)
+- [Aturan Logic Engine](#aturan-logic-engine)
+- [Penanganan Error](#penanganan-error)
 - [Deployment (Render)](#deployment-render)
 - [Postman Collection](#postman-collection)
 - [Testing](#testing)
 
-## Features
+## Fitur
 
-- **Pet Onboarding** — create or rename a pet with `POST /api/v1/pet/setup`.
-- **Core Loop** — log daily activities and get updated pet scores + an empathetic AI message.
-- **AI Companion (Milo)** — Gemini (`gemini-1.5-flash`) generates a short, empathetic reply based on the pet's state and the owner's journal. A fallback message is returned when the AI API errors or is rate-limited.
-- **Demo Utilities** — reset pet state or fast-forward to a "neglected/sad" state for pitching demos.
-- **Activity History** — the latest 10 daily logs per user for the frontend dashboard.
-- **CORS Enabled** — `Access-Control-Allow-Origin: *` for any frontend origin.
+- **Onboarding Pet** — buat atau ganti nama pet lewat `POST /api/v1/pet/setup`.
+- **Core Loop** — catat aktivitas harian dan dapatkan skor pet terbaru + pesan AI yang empatik.
+- **AI Companion (Milo)** — Gemini (`gemini-1.5-flash`) membuat respons singkat dan empatik berdasarkan kondisi pet serta jurnal pemilik. Pesan fallback otomatis diberikan saat API AI error/rate-limited.
+- **Utilitas Demo** — reset kondisi pet atau fast-forward ke kondisi "diabaikan/sedih" untuk demo di depan juri.
+- **Riwayat Aktivitas** — 10 log aktivitas terbaru per pengguna untuk dashboard frontend.
+- **CORS Aktif** — `Access-Control-Allow-Origin: *` untuk semua origin frontend.
 
 ## Tech Stack
 
-| Layer | Technology |
+| Layer | Teknologi |
 | --- | --- |
-| Language | Go |
+| Bahasa | Go |
 | Web Framework | Fiber v2 |
 | ORM | GORM |
 | Database | PostgreSQL (Supabase) |
 | AI | Google Gemini AI (`gemini-1.5-flash`) |
 | Environment | `github.com/joho/godotenv` |
 
-## Getting Started
+## Memulai
 
-### Prerequisites
+### Prasyarat
 
-- Go 1.21+ (tested with 1.26)
-- A PostgreSQL database (e.g., Supabase)
-- A Google Gemini API key
+- Go 1.21+ (diuji dengan 1.26)
+- Database PostgreSQL (mis. Supabase)
+- Google Gemini API key
 
 ### 1. Clone & Install
 
@@ -55,13 +55,13 @@ cd pet-wellness-backend
 go mod download
 ```
 
-### 2. Configure Environment
+### 2. Konfigurasi Environment
 
 ```bash
 cp .env.example .env
 ```
 
-Fill in the values:
+Isi nilainya:
 
 ```dotenv
 PORT=8080
@@ -69,12 +69,12 @@ DATABASE_URL=postgres://user:password@host:5432/dbname?sslmode=require
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-### 3. Create the Database Schema
+### 3. Buat Skema Database
 
-Run this SQL once on your Supabase/PostgreSQL instance:
+Jalankan SQL ini sekali di Supabase/PostgreSQL Anda:
 
 ```sql
--- 1. Users table
+-- 1. Tabel Users
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
@@ -82,7 +82,7 @@ CREATE TABLE users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. Pets table
+-- 2. Tabel Pets
 CREATE TABLE pets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE,
@@ -93,7 +93,7 @@ CREATE TABLE pets (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Daily logs table
+-- 3. Tabel Daily Logs
 CREATE TABLE daily_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -104,64 +104,64 @@ CREATE TABLE daily_logs (
 );
 ```
 
-> **Note:** `AutoMigrate` only adds missing columns — it does **not** create or drop constraints, so your existing schema stays untouched.
+> **Catatan:** `AutoMigrate` hanya menambahkan kolom yang belum ada — **tidak** membuat/menghapus constraint, sehingga skema yang sudah ada tidak diubah.
 
-### 4. Run the Server
+### 4. Jalankan Server
 
 ```bash
 go run .
 ```
 
-The API starts on `http://localhost:8080` (or the `PORT` you set).
+API berjalan di `http://localhost:8080` (atau sesuai `PORT` yang Anda set).
 
-### 5. Run Tests
+### 5. Jalankan Test
 
 ```bash
 go test ./...
 ```
 
-## Project Structure
+## Struktur Project
 
 ```text
 pet-wellness-backend/
-├── main.go                        # Entry point, middleware, router wiring
+├── main.go                        # Entry point, middleware, wiring router
 ├── config/
 │   ├── env.go                     # Load environment variables (.env)
-│   └── database.go                # GORM + PostgreSQL connection, AutoMigrate
+│   └── database.go                # Koneksi GORM + PostgreSQL, AutoMigrate
 ├── models/
-│   ├── user.go                    # User model
-│   ├── pet.go                     # Pet model + score/state constants
-│   └── daily_log.go               # DailyLog model
-├── services/                      # Business logic (one struct per endpoint)
+│   ├── user.go                    # Model User
+│   ├── pet.go                     # Model Pet + konstanta skor/state
+│   └── daily_log.go               # Model DailyLog
+├── services/                      # Logika bisnis (satu struct per endpoint)
 │   ├── health_service.go          # HealthService
 │   ├── pet_service.go             # PetService (read, setup, reset, simulate)
 │   ├── activity_service.go        # ActivityService (log + logic engine + AI)
-│   ├── logic_engine.go            # Score calculation & mood determination
-│   ├── ai_service.go              # Gemini integration (persona Milo)
+│   ├── logic_engine.go            # Kalkulasi skor & penentu kondisi
+│   ├── ai_service.go              # Integrasi Gemini (persona Milo)
 │   └── *_test.go                  # Unit tests
-├── controllers/                   # HTTP handlers (one struct per endpoint)
+├── controllers/                   # Handler HTTP (satu struct per endpoint)
 │   ├── health_controller.go       # HealthController
 │   ├── pet_controller.go          # PetController
 │   └── activity_controller.go     # ActivityController
-├── routes/                        # Route registration (one struct per endpoint)
+├── routes/                        # Registrasi route (satu struct per endpoint)
 │   ├── health_router.go           # GET /health
-│   ├── pet_router.go              # /pet routes
-│   └── activity_router.go         # /activity routes
+│   ├── pet_router.go              # Route /pet
+│   └── activity_router.go         # Route /activity
 └── postman/                       # Postman collection
     └── AI-Wellness-Pet.postman_collection.json
 ```
 
-## API Endpoints
+## Daftar Endpoint API
 
-| Method | Endpoint | Description |
+| Method | Endpoint | Deskripsi |
 | --- | --- | --- |
-| `GET` | `/health` | Server health check |
-| `GET` | `/api/v1/pet/:user_id` | Get the latest pet of a user |
-| `POST` | `/api/v1/pet/setup` | Create or rename a pet (onboarding) |
-| `POST` | `/api/v1/pet/:user_id/reset` | Reset pet to default state (50/50/Neutral) |
-| `POST` | `/api/v1/pet/:user_id/simulate-neglect` | Force pet into neglected state (20/20/Sad) |
-| `POST` | `/api/v1/activity` | Log daily activity (core loop) |
-| `GET` | `/api/v1/activity/:user_id` | Get the 10 latest daily logs |
+| `GET` | `/health` | Cek kesehatan server |
+| `GET` | `/api/v1/pet/:user_id` | Ambil pet terbaru milik user |
+| `POST` | `/api/v1/pet/setup` | Buat atau ganti nama pet (onboarding) |
+| `POST` | `/api/v1/pet/:user_id/reset` | Reset pet ke kondisi default (50/50/Neutral) |
+| `POST` | `/api/v1/pet/:user_id/simulate-neglect` | Paksa pet ke kondisi diabaikan (20/20/Sad) |
+| `POST` | `/api/v1/activity` | Catat aktivitas harian (core loop) |
+| `GET` | `/api/v1/activity/:user_id` | Ambil 10 log aktivitas terbaru |
 
 ### Health Check
 
@@ -193,9 +193,9 @@ Content-Type: application/json
 }
 ```
 
-- `pet_name` is **mandatory** (empty → `400 pet_name is required`).
-- If the user has no pet yet, a new pet is created with `health_score: 50`, `energy_score: 50`, `current_state: "Neutral"`.
-- If the pet already exists, only `pet_name` is updated.
+- `pet_name` **wajib diisi** (kosong → `400 pet_name is required`).
+- Jika user belum punya pet, pet baru dibuat dengan `health_score: 50`, `energy_score: 50`, `current_state: "Neutral"`.
+- Jika pet sudah ada, hanya kolom `pet_name` yang diperbarui.
 
 **Response — 200 OK**
 
@@ -216,9 +216,9 @@ Content-Type: application/json
 }
 ```
 
-**Error — 404 user not registered**
+**Error — 404 user tidak terdaftar**
 
-If the `user_id` does not exist in the `users` table (foreign key violation):
+Jika `user_id` tidak ada di tabel `users` (foreign key violation):
 
 ```json
 {
@@ -271,13 +271,13 @@ Content-Type: application/json
 }
 ```
 
-**Flow**
+**Alur**
 
-1. Validates that the pet exists (must be set up first).
-2. Stores the record in `daily_logs`.
-3. Runs the **Logic Engine** to recalculate scores and determine the state.
-4. Updates the pet in the `pets` table.
-5. Calls Gemini AI (`gemini-1.5-flash`) for an empathetic reply from the pet persona based on the new state and the journal text. Falls back to a static message on AI errors.
+1. Validasi pet sudah ada (harus di-setup terlebih dahulu).
+2. Simpan record ke tabel `daily_logs`.
+3. Jalankan **Logic Engine** untuk menghitung ulang skor dan menentukan kondisi.
+4. Update pet di tabel `pets`.
+5. Panggil Gemini AI (`gemini-1.5-flash`) untuk respons empatik dari persona pet berdasarkan kondisi baru dan teks jurnal. Fallback otomatis jika AI error.
 
 **Response — 200 OK**
 
@@ -298,7 +298,7 @@ Content-Type: application/json
 }
 ```
 
-**Error — 404** (pet not set up yet)
+**Error — 404** (pet belum di-setup)
 
 ```json
 {
@@ -313,7 +313,7 @@ Content-Type: application/json
 POST /api/v1/pet/1f4dba8f-07c9-4aa3-9738-5b1c9ec18573/reset
 ```
 
-Restores the pet to `health_score: 50`, `energy_score: 50`, `current_state: "Neutral"`. **Daily logs are not deleted.**
+Mengembalikan pet ke `health_score: 50`, `energy_score: 50`, `current_state: "Neutral"`. **Riwayat daily_logs tidak dihapus.**
 
 **Response — 200 OK**
 
@@ -338,7 +338,7 @@ Restores the pet to `health_score: 50`, `energy_score: 50`, `current_state: "Neu
 POST /api/v1/pet/1f4dba8f-07c9-4aa3-9738-5b1c9ec18573/simulate-neglect
 ```
 
-Fast-forward simulation for demos: sets the pet to `health_score: 20`, `energy_score: 20`, `current_state: "Sad"`.
+Simulasi fast-forward untuk demo: set pet ke `health_score: 20`, `energy_score: 20`, `current_state: "Sad"`.
 
 **Response — 200 OK**
 
@@ -363,7 +363,7 @@ Fast-forward simulation for demos: sets the pet to `health_score: 20`, `energy_s
 GET /api/v1/activity/1f4dba8f-07c9-4aa3-9738-5b1c9ec18573
 ```
 
-Returns the 10 latest daily logs ordered by `created_at DESC`.
+Mengembalikan 10 log aktivitas terbaru, diurutkan berdasarkan `created_at DESC`.
 
 **Response — 200 OK**
 
@@ -383,67 +383,67 @@ Returns the 10 latest daily logs ordered by `created_at DESC`.
 }
 ```
 
-## Logic Engine Rules
+## Aturan Logic Engine
 
-Scores start from the pet's current values and are updated on every activity:
+Skor dimulai dari nilai pet saat ini dan diperbarui setiap ada aktivitas:
 
-| Condition | Effect |
+| Kondisi | Efek |
 | --- | --- |
 | `water_glasses >= 4` | `health_score + 15` |
 | `sleep_hours >= 7.0` | `energy_score + 25` |
-| `journal_text` not empty | `health_score + 10`, `energy_score + 10` |
+| `journal_text` tidak kosong | `health_score + 10`, `energy_score + 10` |
 
-- Scores are **clamped** between `0` and `100`.
-- The state is determined in the following priority order:
+- Skor di-**clamp** antara `0` dan `100`.
+- Kondisi ditentukan berdasarkan urutan prioritas berikut:
 
-| Priority | Condition | State |
+| Prioritas | Kondisi | State |
 | --- | --- | --- |
 | 1 | `(health + energy) / 2 >= 75` | `Happy` |
 | 2 | `energy < 35` | `Tired` |
 | 3 | `health < 40` | `Sad` |
-| 4 | otherwise | `Neutral` |
+| 4 | selain itu | `Neutral` |
 
-## Error Handling
+## Penanganan Error
 
-| HTTP Status | Scenario |
+| HTTP Status | Skenario |
 | --- | --- |
-| `400` | Invalid JSON body, missing `user_id`, or missing `pet_name` |
-| `404` | Pet not found, or user not registered (FK violation during setup) |
-| `500` | Database/processing failure (logged to the server console) |
+| `400` | Body JSON tidak valid, `user_id` kosong, atau `pet_name` kosong |
+| `404` | Pet tidak ditemukan, atau user tidak terdaftar (FK violation saat setup) |
+| `500` | Gagal akses database/pemrosesan (dicatat di log server) |
 
 ## Deployment (Render)
 
-1. Push the repository to GitHub.
-2. In Render, create a **New Web Service** and connect the repository.
-3. Configure:
+1. Push repository ke GitHub.
+2. Di Render, buat **New Web Service** dan hubungkan repository.
+3. Konfigurasi:
 
-| Setting | Value |
+| Setting | Nilai |
 | --- | --- |
 | Build Command | `go build -o pet-wellness-backend` |
 | Start Command | `./pet-wellness-backend` |
 
-4. Add the environment variables:
+4. Tambahkan environment variables:
 
-| Variable | Example |
+| Variable | Contoh |
 | --- | --- |
 | `PORT` | `8080` |
 | `DATABASE_URL` | `postgres://user:password@host:5432/dbname?sslmode=require` |
 | `GEMINI_API_KEY` | `AIzaSy...` |
 
-> `.env` is git-ignored; set all secrets via the Render dashboard.
+> `.env` di-ignore oleh git; semua secret diisi lewat dashboard Render.
 
 ## Postman Collection
 
-Import `postman/AI-Wellness-Pet.postman_collection.json` into Postman. The collection includes variables (`base_url`, `user_id`, `pet_name`) and example responses for every endpoint.
+Import `postman/AI-Wellness-Pet.postman_collection.json` ke Postman. Collection mencakup variabel (`base_url`, `user_id`, `pet_name`) dan contoh response untuk setiap endpoint.
 
 ## Testing
 
-Unit tests cover the Logic Engine (`logic_engine_test.go`) and the FK-violation detection (`pet_service_test.go`).
+Unit tests mencakup Logic Engine (`logic_engine_test.go`) dan deteksi FK violation (`pet_service_test.go`).
 
 ```bash
 go test ./...
 ```
 
-## License
+## Lisensi
 
-This project was built for a hackathon demo. No license is specified.
+Project ini dibuat untuk demo hackathon. Tidak ada lisensi yang ditetapkan.
