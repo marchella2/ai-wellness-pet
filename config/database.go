@@ -32,6 +32,7 @@ func ConnectDatabase(dsn string) *gorm.DB {
 		&models.User{},
 		&models.Pet{},
 		&models.DailyLog{},
+		&models.ChatMessage{},
 	); err != nil {
 		log.Fatalf("[config] failed to run auto migration: %v", err)
 	}
