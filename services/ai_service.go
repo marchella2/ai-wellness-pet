@@ -13,7 +13,13 @@ import (
 	"pet-wellness-backend/models"
 )
 
-const geminiModel = "gemini-1.5-flash"
+// geminiModel uses the "-latest" alias so it keeps tracking Google's current
+// lite flash model instead of pinning to a dated version that eventually
+// retires (which is what happened to the previously hardcoded
+// "gemini-1.5-flash"). The "lite" tier is used over plain "flash" because it
+// has noticeably more free-tier capacity headroom, which matters more than
+// raw model power for a chat companion feature under demo-day load.
+const geminiModel = "gemini-flash-lite-latest"
 
 // FallbackMessage is returned when the Gemini API is unavailable so that the
 // endpoint always responds with a meaningful AI message.
