@@ -12,7 +12,14 @@ import (
 )
 
 func ConnectDatabase(dsn string) *gorm.DB {
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+	// PreferSimpleProtocol disables prepared statements (pgx simple query
+	// protocol). This avoids "prepared statement ... already exists"
+	// (SQLSTATE 42P05) that breaks AutoMigrate's HasTable check, especially
+	// when connecting through a transaction-mode pooler (e.g. Supabase).
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  dsn,
+		PreferSimpleProtocol: true,
+	}), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Warn),
 	})
 	if err != nil {
