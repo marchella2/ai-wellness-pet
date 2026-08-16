@@ -56,7 +56,7 @@ func (s *ActivityService) LogActivity(ctx context.Context, input ActivityLogInpu
 		return nil, "", err
 	}
 
-	aiMessage, err := GenerateAIResponse(ctx, s.env.GeminiAPIKey, p.CurrentState, input.JournalText)
+	aiMessage, err := GenerateAIResponse(ctx, s.env.GeminiAPIKey, p.CurrentState, p.HealthScore, p.EnergyScore, input.JournalText)
 	if err != nil {
 		return nil, "", err
 	}
