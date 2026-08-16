@@ -50,7 +50,7 @@ func (s *ChatService) SendMessage(ctx context.Context, userID, message string) (
 		return "", err
 	}
 
-	reply, err := GenerateChatReply(ctx, s.env.GeminiAPIKey, pet.CurrentState, pet.HealthScore, pet.EnergyScore, history, message)
+	reply, err := GenerateChatReply(ctx, s.env.GeminiAPIKey, pet.PetName, pet.CurrentState, pet.HealthScore, pet.EnergyScore, history, message)
 	if err != nil {
 		return "", err
 	}
